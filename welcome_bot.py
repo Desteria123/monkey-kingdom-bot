@@ -12,6 +12,7 @@ from rank_management import install as install_rank_commands, resolve_audit
 from activity_loa import install as install_activity_commands, ReviewButton, ensure_channels
 from kingdom_announcements import install as install_announce_command
 from setup_commands import install as install_setup_commands
+from rules_management import install as install_rules_commands
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -40,6 +41,7 @@ install_rank_commands(tree)
 install_activity_commands(tree)
 install_announce_command(tree)
 install_setup_commands(tree, get_welcome_channel=lambda g: get_welcome_channel(g, create=False))
+install_rules_commands(tree)
 
 @client.event
 async def setup_hook():

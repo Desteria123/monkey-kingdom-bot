@@ -104,7 +104,8 @@ def install(tree, get_welcome_channel):
                 if key == 'welcome':
                     created=await post_embed(ch,static_welcome_embed())
                 elif key == 'rules':
-                    created=await post_embed(ch,rules_embed())
+                    from rules_management import draft_text, formatted_rules
+                    created=await post_embed(ch,formatted_rules(await draft_text(guild)))
                 else:
                     created=await post_embed(ch,panel_embed(),view=ApplyView())
                 try:

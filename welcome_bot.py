@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from recruitment import ApplyView, DecisionView, configure, review_channel
 from rank_management import install as install_rank_commands, resolve_audit
 from activity_loa import install as install_activity_commands, ReviewButton, ensure_channels
+from kingdom_announcements import install as install_announce_command
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -18,6 +19,8 @@ RECRUITMENT_CHANNEL_ID = 1530372808129904851
 INFORMATION_CATEGORY_ID = 1515095050995105863
 WELCOME_CHANNEL_ID = int(os.getenv('WELCOME_CHANNEL_ID', '0'))
 TOKEN = os.getenv('DISCORD_BOT_TOKEN', '').strip()
+BANNER_PATH = Path(__file__).resolve().parent / 'monkey_banner.png'
+BANNER_NAME = 'monkey_banner.png'
 
 parser = argparse.ArgumentParser(description='Monkey Kingdom welcome bot')
 parser.add_argument('--check', action='store_true', help='Check bot access without changing channels')
@@ -34,6 +37,7 @@ client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
 install_rank_commands(tree)
 install_activity_commands(tree)
+install_announce_command(tree)
 
 @client.event
 async def setup_hook():
@@ -60,9 +64,26 @@ def welcome_embed(member: discord.Member | None, guild: discord.Guild) -> discor
         color=discord.Color.from_rgb(241, 196, 15),
     )
     embed.set_footer(text=f'THE CITY IS YOUR PLAYGROUND. THE FAMILY IS YOUR BACKUP. • {guild.name}')
+    if BANNER_PATH.is_file():
+        embed.set_image(url=f'attachment://{BANNER_NAME}')
     if member:
         embed.set_thumbnail(url=member.display_avatar.url)
     return embed
+
+
+async def send_welcome(channel: discord.TextChannel, member: discord.Member | None, guild: discord.Guild) -> None:
+    """Attach the image to EACH message, so no external image hosting is needed."""
+    embed = welcome_embed(member, guild)
+    mentions = (discord.AllowedMentions(users=[member], roles=False, everyone=False)
+                if member else discord.AllowedMentions.none())
+    if BANNER_PATH.is_file():
+        # Uploading as an attachment keeps the embedded image functional on Railway.
+        with BANNER_PATH.open('rb') as banner_file:
+            await channel.send(embed=embed, file=discord.File(banner_file, filename=BANNER_NAME),
+                               allowed_mentions=mentions)
+    else:
+        print(f'WARNING: Missing {BANNER_NAME} next to welcome_bot.py; sending text-only welcome.', file=sys.stderr)
+        await channel.send(embed=embed, allowed_mentions=mentions)
 
 
 async def get_welcome_channel(guild: discord.Guild, create: bool) -> discord.TextChannel | None:
@@ -119,6 +140,12 @@ async def on_ready():
             await configure(guild)
         except Exception as exc:
             print(f'ERROR automatic recruitment setup: {type(exc).__name__}: {exc}', file=sys.stderr)
+    # Optional one-shot refresh of the EXISTING recruitment panel with the branded image.
+    if os.getenv('BRANDING_REFRESH_RECRUITMENT', '').lower() == 'true' and not (args.check or args.test or args.setup_recruitment):
+        try:
+            await configure(guild)
+        except Exception as exc:
+            print(f'ERROR refreshing recruitment artwork: {type(exc).__name__}: {exc}', file=sys.stderr)
     if args.setup_recruitment:
         try:
             await configure(guild)
@@ -148,7 +175,7 @@ async def on_ready():
         if not (perms.view_channel and perms.send_messages and perms.embed_links):
             raise RuntimeError('Bot needs View Channel, Send Messages and Embed Links in #welcome')
         if args.test:
-            await channel.send(embed=welcome_embed(None, guild), allowed_mentions=discord.AllowedMentions.none())
+            await send_welcome(channel, None, guild)
             print(f'Sample sent to #{channel.name}; no member pinged.')
             await client.close()
         else:
@@ -167,10 +194,7 @@ async def on_member_join(member: discord.Member):
         if channel is None:
             print('Cannot welcome: #welcome channel missing', file=sys.stderr)
             return
-        await channel.send(
-            embed=welcome_embed(member, member.guild),
-            allowed_mentions=discord.AllowedMentions(users=[member], roles=False, everyone=False),
-        )
+        await send_welcome(channel, member, member.guild)
         print(f'Welcomed member ID {member.id}')
     except discord.Forbidden:
         print('Cannot post welcome: missing permissions in #welcome', file=sys.stderr)

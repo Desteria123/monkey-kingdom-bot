@@ -2,6 +2,7 @@
 import asyncio
 import os
 import re
+from pathlib import Path
 import discord
 
 GUILD_ID = int(os.getenv('DISCORD_GUILD_ID', '1515095050995105862'))
@@ -14,6 +15,8 @@ POTENTIAL_ROLE = 1532600141486489690
 LEADERSHIP_ROLE_IDS = [1554289393374732308, 1515163342606438530, 1515432899095298198,
                        1515437209308758216, 1515096134824099941]
 GOLD = discord.Color.from_rgb(241, 196, 15)
+BANNER_PATH = Path(__file__).resolve().parent / 'monkey_banner.png'
+BANNER_NAME = 'monkey_banner.png'
 PANEL_ID = 'mk_apply_v1'
 ACCEPT_ID = 'mk_accept_v1'
 REJECT_ID = 'mk_reject_v1'
@@ -62,7 +65,7 @@ async def ensure_review_channel(guild: discord.Guild) -> discord.TextChannel:
 
 
 def panel_embed() -> discord.Embed:
-    return discord.Embed(
+    embed = discord.Embed(
         title='👑🐒 MONKEY KINGDOM — RECRUITMENT',
         description=('**READY TO JOIN THE KINGDOM?**\n\n'
                      'We seek loyalty, respect, teamwork, and strong FiveM roleplay.\n\n'
@@ -72,6 +75,9 @@ def panel_embed() -> discord.Embed:
                      '*Come broke. Come unknown. Become known by everyone.*'),
         color=GOLD,
     )
+    if BANNER_PATH.is_file():
+        embed.set_image(url=f'attachment://{BANNER_NAME}')
+    return embed
 
 
 async def duplicate_exists(channel: discord.TextChannel, user_id: int) -> bool:
@@ -255,11 +261,21 @@ async def configure(guild: discord.Guild):
         p = ch.permissions_for(me)
         if not (p.view_channel and p.send_messages and p.embed_links):
             raise RuntimeError(f'Bot needs View/Send/Embed in #{ch.name}')
-    # Idempotent panel setup: reuse prior panel instead of posting duplicates.
+    # Reuse panel rather than creating duplicates. Each message embeds its own image attachment.
     async for message in channel.history(limit=100):
         if message.author.id == me.id and message.embeds and message.embeds[0].title == panel_embed().title:
-            await message.edit(embed=panel_embed(), view=ApplyView())
-            print(f'Updated existing recruitment panel: {message.jump_url}')
+            if BANNER_PATH.is_file():
+                with BANNER_PATH.open('rb') as f:
+                    await message.edit(embed=panel_embed(), view=ApplyView(),
+                                       attachments=[discord.File(f, filename=BANNER_NAME)])
+            else:
+                await message.edit(embed=panel_embed(), view=ApplyView())
+            print(f'Updated existing branded recruitment panel: {message.jump_url}')
             return
-    msg = await channel.send(embed=panel_embed(), view=ApplyView())
-    print(f'Posted new recruitment application panel: {msg.jump_url}')
+    if BANNER_PATH.is_file():
+        with BANNER_PATH.open('rb') as f:
+            msg = await channel.send(embed=panel_embed(), view=ApplyView(),
+                                     file=discord.File(f, filename=BANNER_NAME))
+    else:
+        msg = await channel.send(embed=panel_embed(), view=ApplyView())
+    print(f'Posted branded recruitment application panel: {msg.jump_url}')

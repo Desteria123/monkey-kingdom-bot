@@ -9,6 +9,7 @@ import discord
 from dotenv import load_dotenv
 from recruitment import ApplyView, DecisionView, configure, review_channel
 from rank_management import install as install_rank_commands, resolve_audit
+from activity_loa import install as install_activity_commands, ReviewButton, ensure_channels
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -32,11 +33,13 @@ intents.members = True
 client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
 install_rank_commands(tree)
+install_activity_commands(tree)
 
 @client.event
 async def setup_hook():
     client.add_view(ApplyView())
     client.add_view(DecisionView())
+    client.add_view(ReviewButton())
     await tree.sync(guild=discord.Object(id=GUILD_ID))
 
 
@@ -101,6 +104,11 @@ async def on_ready():
         await client.close()
         return
     print(f'Connected as {client.user} to {guild.name} ({guild.id})')
+    if os.getenv('ACTIVITY_AUTO_SETUP', '').lower() == 'true' and not args.check and not args.test:
+        try:
+            await ensure_channels(guild)
+        except Exception as exc:
+            print(f'ERROR setting up LOA/activity channels: {type(exc).__name__}: {exc}', file=sys.stderr)
     if os.getenv('RANK_AUDIT_AUTO_SETUP', '').lower() == 'true' and not args.check and not args.test:
         try:
             await resolve_audit(guild, create=True)

@@ -13,6 +13,7 @@ from activity_loa import install as install_activity_commands, ReviewButton, ens
 from kingdom_announcements import install as install_announce_command
 from setup_commands import install as install_setup_commands
 from rules_management import install as install_rules_commands
+from backup_manager import install as install_backup_commands, start as start_backup_worker
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -42,6 +43,7 @@ install_activity_commands(tree)
 install_announce_command(tree)
 install_setup_commands(tree, get_welcome_channel=lambda g: get_welcome_channel(g, create=False))
 install_rules_commands(tree)
+install_backup_commands(tree, client)
 
 @client.event
 async def setup_hook():
@@ -129,6 +131,8 @@ async def on_ready():
         await client.close()
         return
     print(f'Connected as {client.user} to {guild.name} ({guild.id})')
+    if not (args.check or args.test or args.setup_recruitment):
+        start_backup_worker(client)
     if os.getenv('ACTIVITY_AUTO_SETUP', '').lower() == 'true' and not args.check and not args.test:
         try:
             await ensure_channels(guild)

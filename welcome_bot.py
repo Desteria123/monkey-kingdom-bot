@@ -50,7 +50,16 @@ async def setup_hook():
     client.add_view(ApplyView())
     client.add_view(DecisionView())
     client.add_view(ReviewButton())
-    await tree.sync(guild=discord.Object(id=GUILD_ID))
+    scope = discord.Object(id=GUILD_ID)
+    local_names = [command.name for command in tree.get_commands(guild=scope)]
+    print(f"Guild commands pending sync: {', '.join(local_names)}", flush=True)
+    if 'backup' not in local_names:
+        raise RuntimeError('Backup command group was not registered locally; refusing to sync')
+    synced = await tree.sync(guild=scope)
+    synced_names = [command.name for command in synced]
+    print(f"Discord guild commands synced: {', '.join(synced_names)}", flush=True)
+    if 'backup' not in synced_names:
+        print('WARNING: /backup was not returned by Discord command sync', flush=True)
 
 
 def welcome_embed(member: discord.Member | None, guild: discord.Guild) -> discord.Embed:

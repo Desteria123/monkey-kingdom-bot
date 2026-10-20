@@ -150,7 +150,7 @@ async def _worker(client):
 
 def install(tree,client):
     scope=discord.Object(id=GUILD_ID)
-    group=app_commands.Group(name='backup',description='Private Kingdom archival backups',guild_ids=[GUILD_ID])
+    group=app_commands.Group(name='backup',description='Private Kingdom archival backups')
 
     @group.command(name='status',description='Check database status and backup configuration')
     async def status(interaction:discord.Interaction):

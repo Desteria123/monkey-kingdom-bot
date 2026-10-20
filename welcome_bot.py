@@ -7,6 +7,7 @@ from pathlib import Path
 
 import discord
 from dotenv import load_dotenv
+from recruitment import ApplyView, DecisionView, configure, review_channel
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -19,6 +20,7 @@ TOKEN = os.getenv('DISCORD_BOT_TOKEN', '').strip()
 parser = argparse.ArgumentParser(description='Monkey Kingdom welcome bot')
 parser.add_argument('--check', action='store_true', help='Check bot access without changing channels')
 parser.add_argument('--test', action='store_true', help='Post sample embed to the welcome channel')
+parser.add_argument('--setup-recruitment', action='store_true', help='Publish recruitment panel and create private review channel')
 args = parser.parse_args()
 
 if not TOKEN:
@@ -27,6 +29,11 @@ if not TOKEN:
 intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents=intents)
+
+@client.event
+async def setup_hook():
+    client.add_view(ApplyView())
+    client.add_view(DecisionView())
 
 
 def welcome_embed(member: discord.Member | None, guild: discord.Guild) -> discord.Embed:
@@ -90,7 +97,21 @@ async def on_ready():
         await client.close()
         return
     print(f'Connected as {client.user} to {guild.name} ({guild.id})')
+    if os.getenv('RECRUITMENT_AUTO_SETUP', '').lower() == 'true' and not args.check and not args.setup_recruitment and not args.test:
+        try:
+            await configure(guild)
+        except Exception as exc:
+            print(f'ERROR automatic recruitment setup: {type(exc).__name__}: {exc}', file=sys.stderr)
+    if args.setup_recruitment:
+        try:
+            await configure(guild)
+        except Exception as exc:
+            print(f'ERROR setting up recruitment: {type(exc).__name__}: {exc}', file=sys.stderr)
+        await client.close()
+        return
     if args.check:
+        review = review_channel(guild)
+        print(f'Recruitment review channel: {review.name if review else "Not configured"}')
         channel = await get_welcome_channel(guild, create=False)
         if channel:
             me = guild.me

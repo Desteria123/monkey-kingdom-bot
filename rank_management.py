@@ -183,7 +183,7 @@ def install(tree: app_commands.CommandTree):
     async def demote(interaction: discord.Interaction, member: discord.Member, reason: str):
         await edit_rank(interaction, member, reason, -1)
 
-    @tree.command(name='removefamily', description='Revoke family membership and rank (Director+)', guild=scope)
+    @tree.command(name='remove', description='Revoke family membership and rank (Director+)', guild=scope)
     @app_commands.describe(member='Member to remove', reason='Required reason for audit log')
     async def removefamily(interaction: discord.Interaction, member: discord.Member, reason: str):
         if interaction.guild is None or not isinstance(interaction.user, discord.Member):

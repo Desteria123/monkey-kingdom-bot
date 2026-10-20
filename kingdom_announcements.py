@@ -10,7 +10,7 @@ LEADERSHIP_IDS = {1554289393374732308, 1515163342606438530, 1515432899095298198,
 BANNER = Path(__file__).resolve().parent / 'monkey_banner.png'
 
 def install(tree: app_commands.CommandTree):
-    @tree.command(name='kingdomannounce', description='Post a branded Kingdom announcement', guild=discord.Object(id=GUILD_ID))
+    @tree.command(name='announce', description='Post a branded Kingdom announcement', guild=discord.Object(id=GUILD_ID))
     @app_commands.describe(channel='Destination channel', headline='Announcement title', message='Announcement text')
     async def announce(interaction: discord.Interaction, channel: discord.TextChannel, headline: str, message: str):
         if interaction.guild_id != GUILD_ID or not isinstance(interaction.user, discord.Member):

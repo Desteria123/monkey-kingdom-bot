@@ -33,6 +33,12 @@ def install(tree: app_commands.CommandTree):
         if not (perms.view_channel and perms.send_messages and perms.embed_links):
             await interaction.response.send_message('Bot cannot send embeds to that channel.', ephemeral=True)
             return
+        if not perms.mention_everyone:
+            await interaction.response.send_message(
+                'I need the **Mention @everyone, @here, and All Roles** permission in that channel to ping everyone.',
+                ephemeral=True,
+            )
+            return
         await interaction.response.defer(ephemeral=True, thinking=True)
         embed = discord.Embed(title='👑 ' + headline, description=message, color=discord.Color.from_rgb(241,196,15))
         embed.set_footer(text=f'Monkey Kingdom • Posted by {interaction.user.display_name}')
@@ -40,10 +46,11 @@ def install(tree: app_commands.CommandTree):
             if BANNER.is_file() and perms.attach_files:
                 embed.set_image(url='attachment://monkey_banner.png')
                 with BANNER.open('rb') as f:
-                    posted = await channel.send(embed=embed, file=discord.File(f, filename='monkey_banner.png'),
-                                                allowed_mentions=discord.AllowedMentions.none())
+                    posted = await channel.send(content='@everyone', embed=embed, file=discord.File(f, filename='monkey_banner.png'),
+                                                allowed_mentions=discord.AllowedMentions(everyone=True, users=False, roles=False))
             else:
-                posted = await channel.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+                posted = await channel.send(content='@everyone', embed=embed,
+                                            allowed_mentions=discord.AllowedMentions(everyone=True, users=False, roles=False))
         except discord.HTTPException as exc:
             await interaction.followup.send(f'Announcement failed: {type(exc).__name__}', ephemeral=True)
             return

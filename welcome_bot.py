@@ -8,6 +8,7 @@ from pathlib import Path
 import discord
 from dotenv import load_dotenv
 from recruitment import ApplyView, DecisionView, configure, review_channel
+from rank_management import install as install_rank_commands, resolve_audit
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -29,11 +30,14 @@ if not TOKEN:
 intents = discord.Intents.default()
 intents.members = True
 client = discord.Client(intents=intents)
+tree = discord.app_commands.CommandTree(client)
+install_rank_commands(tree)
 
 @client.event
 async def setup_hook():
     client.add_view(ApplyView())
     client.add_view(DecisionView())
+    await tree.sync(guild=discord.Object(id=GUILD_ID))
 
 
 def welcome_embed(member: discord.Member | None, guild: discord.Guild) -> discord.Embed:
@@ -97,6 +101,11 @@ async def on_ready():
         await client.close()
         return
     print(f'Connected as {client.user} to {guild.name} ({guild.id})')
+    if os.getenv('RANK_AUDIT_AUTO_SETUP', '').lower() == 'true' and not args.check and not args.test:
+        try:
+            await resolve_audit(guild, create=True)
+        except Exception as exc:
+            print(f'ERROR setting up rank audit channel: {type(exc).__name__}: {exc}', file=sys.stderr)
     if os.getenv('RECRUITMENT_AUTO_SETUP', '').lower() == 'true' and not args.check and not args.setup_recruitment and not args.test:
         try:
             await configure(guild)

@@ -14,6 +14,7 @@ from kingdom_announcements import install as install_announce_command
 from setup_commands import install as install_setup_commands
 from rules_management import install as install_rules_commands
 from backup_manager import install as install_backup_commands, start as start_backup_worker
+from dashboard import install as install_dashboard_command
 
 load_dotenv(Path(__file__).resolve().parent / '.env')
 
@@ -44,6 +45,7 @@ install_announce_command(tree)
 install_setup_commands(tree, get_welcome_channel=lambda g: get_welcome_channel(g, create=False))
 install_rules_commands(tree)
 install_backup_commands(tree, client)
+install_dashboard_command(tree)
 
 @client.event
 async def setup_hook():
@@ -53,6 +55,8 @@ async def setup_hook():
     scope = discord.Object(id=GUILD_ID)
     local_names = [command.name for command in tree.get_commands(guild=scope)]
     print(f"Guild commands pending sync: {', '.join(local_names)}", flush=True)
+    if 'dashboard' not in local_names:
+        raise RuntimeError('Dashboard was not registered; refusing to sync')
     if 'backup' not in local_names:
         raise RuntimeError('Backup command group was not registered locally; refusing to sync')
     synced = await tree.sync(guild=scope)
